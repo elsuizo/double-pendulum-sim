@@ -23,6 +23,10 @@
 // You should have received a copy of the GNU General Public License
 //--------------------------------------------------------------------------
 /// Double pendulum animation
+// TODO(elsuizo:2020-07-14): list of:
+// - [  ] implementar RK(Runge-kutta)
+// - [  ] implementar el game-loop para que podamos pausar o cambiar algo
+// - [  ] hacer que participe el mouse (puede ser moviendo la posicion inicial)
 //-------------------------------------------------------------------------
 //                        crates imports
 //-------------------------------------------------------------------------
@@ -44,7 +48,8 @@ struct Link<'a> {
     position: Vector2f,
     shape: RectangleShape<'a>,
     color: Color,
-    mass: f32
+    mass: f32,
+    joint: Joint<'a>
 }
 
 struct Joint<'a> {
@@ -86,17 +91,20 @@ impl<'a> DoublePendulum<'a> {
         let x = 250.0 - self.link1.length * theta1.to_radians().sin();
         let y = 250.0 + self.link1.length * theta1.to_radians().cos();
         let new_position = Vector2f::new(x, y);
+        // NOTE(elsuizo:2020-07-14): el joint tiene un pequenio offset para que se vea bien
+        let joint_new_position = Vector2f::new(x, y - 5.0);
         self.link1.shape.set_rotation(theta1);
         self.link2.shape.set_position(new_position);
         // rotamos a el link2
         self.link2.shape.set_rotation(theta2);
+        self.link2.joint.shape.set_position(joint_new_position);
     }
 
 }
 
 impl<'a> Link<'a> {
     // create a new Link
-    fn new(x: f32, y: f32, length: f32, color: Color, mass: f32, theta: f32) -> Self {
+    fn new(x: f32, y: f32, length: f32, color: Color, mass: f32, theta: f32, joint: Joint<'a>) -> Self {
         let mut shape = RectangleShape::new();
         let position = Vector2f::new(x, y);
         let size     = Vector2f::new(10.0, length);
@@ -116,11 +124,16 @@ impl<'a> Link<'a> {
             shape,
             color,
             mass,
+            joint
         }
     }
 }
 
+//-------------------------------------------------------------------------
+//                        main
+//-------------------------------------------------------------------------
 fn main() {
+
     let origin_x = WINDOW_WIDTH / 2.0;
     let origin_y = WINDOW_HEIGHT / 2.0;
     let mut theta1: f32 = 90.0;
@@ -142,12 +155,13 @@ fn main() {
     window.set_vertical_sync_enabled(true);
     let background_color = Color::rgb(100, 100, 100);
 
-    let link1 = Link::new(origin_x, origin_y, 100.0, Color::RED, 1.0, 0.0);
-    let link2 = Link::new(origin_x, origin_y + link1.length, 100.0, Color::BLUE, 1.0, 0.0);
+    let joint1 = Joint::new(5.0, origin_x, origin_y -5.0, Color::GREEN);
+    let link1 = Link::new(origin_x, origin_y, 100.0, Color::RED, 1.0, 0.0, joint1);
+
+    let joint2 = Joint::new(5.0, origin_x + link1.length, origin_y -5.0, Color::WHITE);
+    let link2 = Link::new(origin_x, origin_y + link1.length, 100.0, Color::BLUE, 1.0, 0.0, joint2);
 
     let mut double_pendulum = DoublePendulum::new(Box::new(link1), Box::new(link2));
-    let joint1 = Joint::new(5.0, origin_x, origin_y -5.0, Color::GREEN);
-    //let mut joint2 = Joint::new(5.0, origin_x, origin_y -5.0, Color::WHITE);
     let mut clock = Clock::start();
     let mut is_running = true;
     //-------------------------------------------------------------------------
@@ -157,6 +171,7 @@ fn main() {
     let g = 9.81;
 
     loop {
+
         while let Some(event) = window.poll_event() {
             match event {
                 Event::Closed | Event::KeyPressed {code: Key::Escape, ..} => return,
@@ -197,7 +212,8 @@ fn main() {
         window.clear(background_color);
         window.draw(&double_pendulum.link1.shape);
         window.draw(&double_pendulum.link2.shape);
-        window.draw(&joint1.shape);
+        window.draw(&double_pendulum.link1.joint.shape);
+        window.draw(&double_pendulum.link2.joint.shape);
 
         window.display();
     }
