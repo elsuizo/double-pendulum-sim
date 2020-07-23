@@ -129,6 +129,16 @@ impl<'a> Link<'a> {
     }
 }
 
+fn show_shapes(d: &DoublePendulum, w: &mut RenderWindow, c: Color) {
+    w.clear(c);
+    w.draw(&d.link1.shape);
+    w.draw(&d.link2.shape);
+    w.draw(&d.link1.joint.shape);
+    w.draw(&d.link2.joint.shape);
+
+    w.display();
+}
+
 //-------------------------------------------------------------------------
 //                        main
 //-------------------------------------------------------------------------
@@ -141,7 +151,7 @@ fn main() {
     let mut omega1: f32 = 0.0250;
     let mut omega2: f32 = 0.0250;
     let mut omega1_dot: f32 = 0.01;
-    let mut omega2_dot: f32 = 0.1;
+    let mut omega2_dot: f32 = 0.01;
     // Create the window of the application
     let mut window = RenderWindow::new(
         (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
@@ -168,7 +178,10 @@ fn main() {
     //                        loop
     //-------------------------------------------------------------------------
     let mut i = 0;
-    let g = 9.81;
+    let g = 100.81;
+
+    let mut clock = Clock::start();
+    let ai_time = Time::seconds(0.1);
 
     loop {
 
@@ -189,10 +202,10 @@ fn main() {
         theta1 += omega1;
         theta2 += omega2;
 
-        let m1 = 2.0;
-        let m2 = 8.40;
-        let l1 = 1.0;
-        let l2 = 1.0;
+        let m1 = 200.0;
+        let m2 = 200.0;
+        let l1 = 100.0;
+        let l2 = 100.0;
 
         let num1 = -g * (2.0 * m1 + m2) * theta1.sin() - m2 * g * (theta1 - 2.0 * theta2).sin() - 2.0 * (theta1 - theta2).sin() * m2 * (omega2 * omega2 * l2 + omega1 * omega1 * l1 * (theta1 - theta2).cos());
         let den1 = l1 * (2.0 * m1 + m2 - m2 * (2.0 * theta1 - 2.0 * theta2).cos());
@@ -206,15 +219,16 @@ fn main() {
         // let delta_time = clock.restart().as_seconds();
         // println!("(theta1, theta2): ({}, {})", theta1, theta2);
 
-        double_pendulum.move_links(-theta1, -theta2);
+        double_pendulum.move_links(theta1, theta2);
 
 
-        window.clear(background_color);
-        window.draw(&double_pendulum.link1.shape);
-        window.draw(&double_pendulum.link2.shape);
-        window.draw(&double_pendulum.link1.joint.shape);
-        window.draw(&double_pendulum.link2.joint.shape);
-
-        window.display();
+        // window.clear(background_color);
+        show_shapes(&double_pendulum, &mut window, background_color);
+        // window.draw(&double_pendulum.link1.shape);
+        // window.draw(&double_pendulum.link2.shape);
+        // window.draw(&double_pendulum.link1.joint.shape);
+        // window.draw(&double_pendulum.link2.joint.shape);
+        //
+        // window.display();
     }
 }
