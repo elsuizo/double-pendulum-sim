@@ -31,32 +31,48 @@
 //                        crates imports
 //-------------------------------------------------------------------------
 extern crate sfml;
-//-------------------------------------------------------------------------
-//                        includes
-//-------------------------------------------------------------------------
+
 use sfml::graphics::{CircleShape, Color, Font, RectangleShape, RenderTarget,
-                     RenderWindow, Shape,Text, Transformable};
-use sfml::system::{Clock, Time, Vector2f, Vector2u};
+                     RenderWindow, Shape,Text, Transformable, Vertex, VertexArray, PrimitiveType};
+
+use sfml::system::{Clock, Time, Vector2f, Vector2u, Vector3f};
 use sfml::window::{VideoMode, ContextSettings, Event, Key, Style};
 
 const WINDOW_WIDTH:  f32 = 500.0;
 const WINDOW_HEIGHT: f32 = 500.0;
+const G: f32 = 150.8;
 
 struct Link<'a> {
     length: f32,
-    theta: f32,
-    position: Vector2f,
-    shape: RectangleShape<'a>,
+    state: [f32; 3],
+    extremes_positions: (Vector2f, Vector2f),
+    shape: VertexArray,
     color: Color,
-    mass: f32,
-    joint: Joint<'a>
+    mass: Mass<'a>
 }
 
-struct Joint<'a> {
-    radius: f32,
-    position: Vector2f,
-    shape: CircleShape<'a>,
-    color: Color
+impl<'a> Link<'a> {
+    // create a new Link
+    fn new(extremes_positions: (Vector2f, Vector2f), length: f32, color: Color, mass: Mass<'a>) -> Self {
+        let mut shape = VertexArray::default();
+        shape.set_primitive_type(PrimitiveType::LineStrip);
+        shape.append(&Vertex::with_pos_color(extremes_positions.0, color));
+        shape.append(&Vertex::with_pos_color(extremes_positions.1, color));
+        let theta_0 = 90.0f32.to_radians();
+        let state = [theta_0, 0.0, 0.0];
+        Self {
+            length,
+            state,
+            extremes_positions,
+            shape,
+            color,
+            mass
+        }
+    }
+
+    // fn set_position(&mut self, extremes_positions: (Vector2f, Vector2f)) {
+    //     self.shape[0].
+    // }
 }
 
 struct DoublePendulum<'a> {
@@ -64,124 +80,128 @@ struct DoublePendulum<'a> {
     link2: Box<Link<'a>>,
 }
 
-impl<'a> Joint<'a> {
-    fn new(radius: f32, x: f32, y: f32, color: Color) -> Self {
-        let position = Vector2f::new(x, y);
-        let mut shape = CircleShape::new(radius, 100);
-        let origin   = Vector2f::new(5.0, 0.0);
-        shape.set_origin(origin);
-        shape.set_position(position);
-        shape.set_outline_thickness(3.0);
-        shape.set_fill_color(color);
-        shape.set_outline_color(Color::BLACK);
-
-        Self{radius, position, shape, color}
-    }
-}
-
 impl<'a> DoublePendulum<'a> {
     fn new(link1: Box<Link<'a>>, link2: Box<Link<'a>>) -> Self {
         Self{link1, link2}
     }
 
-    fn move_links(&mut self, theta1: f32, theta2: f32) {
-        // TODO(elsuizo:2020-06-12): no se para que quiero guardar las thetas :)
-        self.link1.theta = theta1;
-        self.link2.theta = theta2;
-        let x = 250.0 - self.link1.length * theta1.to_radians().sin();
-        let y = 250.0 + self.link1.length * theta1.to_radians().cos();
-        let new_position = Vector2f::new(x, y);
-        // NOTE(elsuizo:2020-07-14): el joint tiene un pequenio offset para que se vea bien
-        let joint_new_position = Vector2f::new(x, y - 5.0);
-        self.link1.shape.set_rotation(theta1);
-        self.link2.shape.set_position(new_position);
-        // rotamos a el link2
-        self.link2.shape.set_rotation(theta2);
-        self.link2.joint.shape.set_position(joint_new_position);
-    }
+    fn update_position(&mut self, dt: f32) {
 
+        let origin_x = WINDOW_WIDTH / 2.0;
+        let origin_y = WINDOW_HEIGHT / 3.0;
+
+        let r1 = self.link1.mass.radius;
+        let r2 = self.link2.mass.radius;
+
+        let theta1 = self.link1.state[0];
+        let theta2 = self.link2.state[0];
+        let omega1 = self.link1.state[1];
+        let omega2 = self.link2.state[1];
+        let m1 = self.link1.mass.mass;
+        let m2 = self.link2.mass.mass;
+        let thetas_diff = theta1 - theta2;
+        let thetas_diff2 = theta1 - 2.0 * theta2;
+        let num1 = -G * (2.0 * m1 + m2) * theta1.sin();
+        let num2 = -m2 * G * thetas_diff2.sin();
+        let num3 = -2.0 * thetas_diff.sin() * m2;
+        let num4 = omega2 * omega2 * self.link2.length + omega1 * omega1 * self.link1.length * thetas_diff.cos();
+        let den = self.link1.length * (2.0 * m1 + m2 - m2 * (2.0 * (thetas_diff)).cos());
+        self.link1.state[2] = (num1 + num2 + num3 * num4) / den;
+
+        let num1 = 2.0 * thetas_diff.sin();
+        let num2 = (omega1 * omega1 * self.link1.length * (m1 + m2));
+        let num3 = G * (m1 + m2) * theta1.cos();
+        let num4 = omega2 * omega2 * self.link2.length * m2 * thetas_diff.cos();
+        let den = self.link2.length * (2.0 * m1 + m2 - m2 * (2.0 * (thetas_diff)).cos());
+        self.link2.state[2] = (num1 * (num2 + num3 + num4)) / den;
+
+        self.link1.state[1] += self.link1.state[2] * dt;
+        self.link2.state[1] += self.link2.state[2] * dt;
+
+        // self.link1.state[1] *= 0.90;
+        // self.link2.state[1] *= 0.90;
+
+        self.link1.state[0] += self.link1.state[1] * dt;
+        self.link2.state[0] += self.link2.state[1] * dt;
+
+        let x1 = self.link1.length * self.link1.state[0].sin() + origin_x;
+        let y1 = self.link1.length * self.link1.state[0].cos() + origin_y;
+
+        let x2 = x1 + self.link2.length * self.link2.state[0].sin();
+        let y2 = y1 + self.link2.length * self.link2.state[0].cos();
+        let pos1 = Vector2f::new(x1, y1);
+        let pos2 = Vector2f::new(x2, y2);
+        let origin = Vector2f::new(origin_x, origin_y);
+
+        // self.link1.set_position((origin, pos1));
+        // self.link2.set_position((pos1, pos2));
+        // println!("pos1: {:?}", pos1);
+        self.link1.mass.shape.set_position(pos1 - Vector2f::new(r1, r1));
+        self.link2.mass.shape.set_position(pos2 - Vector2f::new(r1, r1));
+
+        self.link1.shape[1].position = pos1;
+        self.link2.shape[0].position = pos1;
+        self.link2.shape[1].position = pos2;
+        // println!("pos2: {:?}", pos2);
+    }
 }
 
-impl<'a> Link<'a> {
-    // create a new Link
-    fn new(x: f32, y: f32, length: f32, color: Color, mass: f32, theta: f32, joint: Joint<'a>) -> Self {
-        let mut shape = RectangleShape::new();
-        let position = Vector2f::new(x, y);
-        let size     = Vector2f::new(10.0, length);
-        let origin   = Vector2f::new(5.0, 0.0);
-        // link shape and geometric initialization
-        shape.set_size(size);
-        shape.set_origin(origin);
+struct Mass<'a> {
+    mass: f32,
+    radius: f32,
+    position: Vector2f,
+    shape: CircleShape<'a>,
+    color: Color
+}
+
+impl<'a> Mass<'a> {
+    fn new(mass: f32, radius: f32, position: Vector2f, color: Color) -> Self {
+        let mut shape = CircleShape::new(radius, 100);
         shape.set_position(position);
         shape.set_outline_thickness(3.0);
         shape.set_fill_color(color);
         shape.set_outline_color(Color::BLACK);
 
-        Self {
-            length,
-            theta,
-            position,
-            shape,
-            color,
-            mass,
-            joint
-        }
+        Self{mass, radius, position, shape, color}
     }
 }
 
-fn show_shapes(d: &DoublePendulum, w: &mut RenderWindow, c: Color) {
-    w.clear(c);
-    w.draw(&d.link1.shape);
-    w.draw(&d.link2.shape);
-    w.draw(&d.link1.joint.shape);
-    w.draw(&d.link2.joint.shape);
 
-    w.display();
-}
-
-//-------------------------------------------------------------------------
-//                        main
-//-------------------------------------------------------------------------
 fn main() {
 
     let origin_x = WINDOW_WIDTH / 2.0;
-    let origin_y = WINDOW_HEIGHT / 2.0;
-    let mut theta1: f32 = 90.0;
-    let mut theta2: f32 = 0.0;
-    let mut omega1: f32 = 0.0250;
-    let mut omega2: f32 = 0.0250;
-    let mut omega1_dot: f32 = 0.01;
-    let mut omega2_dot: f32 = 0.01;
+    let origin_y = WINDOW_HEIGHT / 3.0;
     // Create the window of the application
     let mut window = RenderWindow::new(
         (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
-        "Double pendulum animation",
+        "Double pendulum simulation",
         Style::CLOSE,
         &Default::default(),
     );
     //window.set_mouse_cursor_visible(false);
-    window.set_framerate_limit(60);
+    // window.set_framerate_limit(60);
 
     window.set_vertical_sync_enabled(true);
     let background_color = Color::rgb(100, 100, 100);
 
-    let joint1 = Joint::new(5.0, origin_x, origin_y -5.0, Color::GREEN);
-    let link1 = Link::new(origin_x, origin_y, 100.0, Color::RED, 1.0, 0.0, joint1);
+    let origin = Vector2f::new(origin_x, origin_y);
+    let pos1   = Vector2f::new(origin_x, origin_y + 100.0);
+    let pos2   = Vector2f::new(origin_x, origin_y + 200.0);
 
-    let joint2 = Joint::new(5.0, origin_x + link1.length, origin_y -5.0, Color::WHITE);
-    let link2 = Link::new(origin_x, origin_y + link1.length, 100.0, Color::BLUE, 1.0, 0.0, joint2);
+    let m1 = 100.0;
+    let m2 = 100.0;
+
+    let mass1 = Mass::new(m1, 10.0, pos1 - Vector2f::new(10.0, 10.0), Color::GREEN);
+    let link1 = Link::new((origin, pos1), 100.0, Color::RED, mass1);
+
+    let mass2 = Mass::new(m2, 10.0, pos2 - Vector2f::new(10.0, 10.0), Color::WHITE);
+    let link2 = Link::new((pos1, pos2), 100.0, Color::BLUE, mass2);
 
     let mut double_pendulum = DoublePendulum::new(Box::new(link1), Box::new(link2));
-    let mut clock = Clock::start();
+
     let mut is_running = true;
-    //-------------------------------------------------------------------------
-    //                        loop
-    //-------------------------------------------------------------------------
-    let mut i = 0;
-    let g = 100.81;
 
     let mut clock = Clock::start();
-    let ai_time = Time::seconds(0.1);
 
     loop {
 
@@ -196,39 +216,19 @@ fn main() {
                 _ => {}
             }
         }
-        // NOTE(elsuizo:2020-06-12): me parece que es mejor hacerlo con RK
-        omega1 += omega1_dot;
-        omega2 += omega2_dot;
-        theta1 += omega1;
-        theta2 += omega2;
 
-        let m1 = 200.0;
-        let m2 = 200.0;
-        let l1 = 100.0;
-        let l2 = 100.0;
+        let deltatime = clock.elapsed_time();
+        let dt = deltatime.as_seconds();
+        clock.restart();
+        window.clear(background_color);
 
-        let num1 = -g * (2.0 * m1 + m2) * theta1.sin() - m2 * g * (theta1 - 2.0 * theta2).sin() - 2.0 * (theta1 - theta2).sin() * m2 * (omega2 * omega2 * l2 + omega1 * omega1 * l1 * (theta1 - theta2).cos());
-        let den1 = l1 * (2.0 * m1 + m2 - m2 * (2.0 * theta1 - 2.0 * theta2).cos());
-        let omega1_dot = num1 / den1;
-
-        let num2 = 2.0 * (theta1 - theta2).sin() * (omega1 * omega1 * l1 * (m1 + m2) + g * (m1 + m2) * theta1.cos() + omega2 * omega2 * l2 * m2 * (theta1 - theta2).cos());
-        let den2 = l2 * (2.0 * m1 + m2 - m2 * (2.0 * theta1 - 2.0 * theta2).cos());
-        let omega2_dot = num2 / den2;
-        // let mouse_position = window.mouse_position();
-
-        // let delta_time = clock.restart().as_seconds();
-        // println!("(theta1, theta2): ({}, {})", theta1, theta2);
-
-        double_pendulum.move_links(theta1, theta2);
-
-
-        // window.clear(background_color);
-        show_shapes(&double_pendulum, &mut window, background_color);
-        // window.draw(&double_pendulum.link1.shape);
-        // window.draw(&double_pendulum.link2.shape);
-        // window.draw(&double_pendulum.link1.joint.shape);
-        // window.draw(&double_pendulum.link2.joint.shape);
+        double_pendulum.update_position(dt);
+        // println!("theta: {}", double_pendulum.link1.state[0]);
+        window.draw(&double_pendulum.link1.shape);
+        window.draw(&double_pendulum.link2.shape);
+        window.draw(&double_pendulum.link1.mass.shape);
+        window.draw(&double_pendulum.link2.mass.shape);
         //
-        // window.display();
+        window.display();
     }
 }
