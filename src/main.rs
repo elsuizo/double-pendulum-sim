@@ -24,9 +24,16 @@
 //--------------------------------------------------------------------------
 /// Double pendulum animation
 // TODO(elsuizo:2020-07-14): list of:
-// - [  ] implementar RK(Runge-kutta)
-// - [  ] implementar el game-loop para que podamos pausar o cambiar algo
-// - [  ] hacer que participe el mouse (puede ser moviendo la posicion inicial)
+// - [ ] implementar RK(Runge-kutta)
+// - [ ] implementar el game-loop para que podamos pausar o cambiar algo
+//      - [ ] poder pausar la simulacion
+//      - [ ] Hacer que pos2 siga al mouse cuando esta pausado
+// - [ ] plotear la trayectoria de pos2
+// - [ ] hacer un plot de los valores de las aceleraciones o velocidades
+// - [ ] implementar una manera de cambiar los valores de las masas y los lengths
+// - [ ] incorporar elementos como si fueran una GUI
+// - [ ] estaria bueno que los parametros del pendulo los leamos de un archivo
+//       de configuracion (.json, yaml, csv...)
 //-------------------------------------------------------------------------
 //                        crates imports
 //-------------------------------------------------------------------------
@@ -40,7 +47,7 @@ use sfml::window::{VideoMode, ContextSettings, Event, Key, Style};
 
 const WINDOW_WIDTH:  f32 = 500.0;
 const WINDOW_HEIGHT: f32 = 500.0;
-const G: f32 = 150.8;
+const G: f32 = 500.8;
 
 struct Link<'a> {
     length: f32,
@@ -52,13 +59,15 @@ struct Link<'a> {
 }
 
 impl<'a> Link<'a> {
-    // create a new Link
+    /// Create a new link
     fn new(extremes_positions: (Vector2f, Vector2f), length: f32, color: Color, mass: Mass<'a>) -> Self {
+        // this create the lines
         let mut shape = VertexArray::default();
         shape.set_primitive_type(PrimitiveType::LineStrip);
         shape.append(&Vertex::with_pos_color(extremes_positions.0, color));
         shape.append(&Vertex::with_pos_color(extremes_positions.1, color));
-        let theta_0 = 90.0f32.to_radians();
+        // initial state
+        let theta_0 = 100.0f32.to_radians();
         let state = [theta_0, 0.0, 0.0];
         Self {
             length,
@@ -69,20 +78,19 @@ impl<'a> Link<'a> {
             mass
         }
     }
-
-    // fn set_position(&mut self, extremes_positions: (Vector2f, Vector2f)) {
-    //     self.shape[0].
-    // }
 }
 
 struct DoublePendulum<'a> {
     link1: Box<Link<'a>>,
     link2: Box<Link<'a>>,
+    path: Vec<CircleShape<'a>>
 }
 
 impl<'a> DoublePendulum<'a> {
+
     fn new(link1: Box<Link<'a>>, link2: Box<Link<'a>>) -> Self {
-        Self{link1, link2}
+        let mut path: Vec<CircleShape> = Vec::new();
+        Self{link1, link2, path}
     }
 
     fn update_position(&mut self, dt: f32) {
@@ -121,6 +129,7 @@ impl<'a> DoublePendulum<'a> {
         // self.link1.state[1] *= 0.90;
         // self.link2.state[1] *= 0.90;
 
+
         self.link1.state[0] += self.link1.state[1] * dt;
         self.link2.state[0] += self.link2.state[1] * dt;
 
@@ -129,20 +138,28 @@ impl<'a> DoublePendulum<'a> {
 
         let x2 = x1 + self.link2.length * self.link2.state[0].sin();
         let y2 = y1 + self.link2.length * self.link2.state[0].cos();
+
         let pos1 = Vector2f::new(x1, y1);
         let pos2 = Vector2f::new(x2, y2);
+        let first_position = pos2;
         let origin = Vector2f::new(origin_x, origin_y);
 
+        let last_position = Vector2f::new(0.0, 0.0);
         // self.link1.set_position((origin, pos1));
         // self.link2.set_position((pos1, pos2));
         // println!("pos1: {:?}", pos1);
         self.link1.mass.shape.set_position(pos1 - Vector2f::new(r1, r1));
         self.link2.mass.shape.set_position(pos2 - Vector2f::new(r1, r1));
-
         self.link1.shape[1].position = pos1;
         self.link2.shape[0].position = pos1;
         self.link2.shape[1].position = pos2;
-        // println!("pos2: {:?}", pos2);
+
+        let mut circle = CircleShape::new(1., 30);
+        circle.set_position(pos2);
+        if (self.path.len() > 300) {
+            self.path.clear();
+        }
+        self.path.push(circle);
     }
 }
 
@@ -166,7 +183,6 @@ impl<'a> Mass<'a> {
     }
 }
 
-
 fn main() {
 
     let origin_x = WINDOW_WIDTH / 2.0;
@@ -182,20 +198,20 @@ fn main() {
     // window.set_framerate_limit(60);
 
     window.set_vertical_sync_enabled(true);
-    let background_color = Color::rgb(100, 100, 100);
+    let background_color = Color::BLACK;
 
     let origin = Vector2f::new(origin_x, origin_y);
     let pos1   = Vector2f::new(origin_x, origin_y + 100.0);
     let pos2   = Vector2f::new(origin_x, origin_y + 200.0);
 
-    let m1 = 100.0;
-    let m2 = 100.0;
+    let m1 = 5.0;
+    let m2 = 5.0;
 
     let mass1 = Mass::new(m1, 10.0, pos1 - Vector2f::new(10.0, 10.0), Color::GREEN);
     let link1 = Link::new((origin, pos1), 100.0, Color::RED, mass1);
 
-    let mass2 = Mass::new(m2, 10.0, pos2 - Vector2f::new(10.0, 10.0), Color::WHITE);
-    let link2 = Link::new((pos1, pos2), 100.0, Color::BLUE, mass2);
+    let mass2 = Mass::new(m2, 10.0, pos2 - Vector2f::new(10.0, 10.0), Color::RED);
+    let link2 = Link::new((pos1, pos2), 120.0, Color::BLUE, mass2);
 
     let mut double_pendulum = DoublePendulum::new(Box::new(link1), Box::new(link2));
 
@@ -204,7 +220,6 @@ fn main() {
     let mut clock = Clock::start();
 
     loop {
-
         while let Some(event) = window.poll_event() {
             match event {
                 Event::Closed | Event::KeyPressed {code: Key::Escape, ..} => return,
@@ -223,11 +238,15 @@ fn main() {
         window.clear(background_color);
 
         double_pendulum.update_position(dt);
+
         // println!("theta: {}", double_pendulum.link1.state[0]);
         window.draw(&double_pendulum.link1.shape);
         window.draw(&double_pendulum.link2.shape);
         window.draw(&double_pendulum.link1.mass.shape);
         window.draw(&double_pendulum.link2.mass.shape);
+        for c in &double_pendulum.path {
+            window.draw(c);
+        }
         //
         window.display();
     }
