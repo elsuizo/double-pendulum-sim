@@ -10,10 +10,20 @@ in Archlinux simply:
 sudo pacman -S sfml csfml
 ```
 
+and the Rust programming language compiler and package mannager (cargo) installed in your system
+
+https://www.rust-lang.org/
+
+## Running the simulation
+
+```bash
+cargo run --release
+```
+
 ![](Images/double-pendulum.gif)
 
 
 ## TODO
 
- - [ ] Implement Runge Kutta integrator
+ - [X] Implement Runge Kutta integrator
  - [ ] Live change parameters(mass, links lengths, ...etc)
