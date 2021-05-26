@@ -81,7 +81,7 @@ struct DoublePendulum<'a> {
     link1: Box<Link<'a>>,
     link2: Box<Link<'a>>,
     path: Vec<CircleShape<'a>>,
-    y: V4<f32>
+    states: V4<f32>
 }
 
 impl<'a> DoublePendulum<'a> {
@@ -93,8 +93,8 @@ impl<'a> DoublePendulum<'a> {
         let omega1_0 = link1.states[1];
         let omega2_0 = link2.states[1];
         // initial conditions to the system
-        let y = V4::new_from(omega1_0, omega2_0, theta1_0, theta2_0);
-        Self{link1, link2, path, y}
+        let states = V4::new_from(omega1_0, omega2_0, theta1_0, theta2_0);
+        Self{link1, link2, path, states}
     }
 
     // NOTE(elsuizo:2021-05-25): wide code is better code :)
@@ -115,11 +115,11 @@ impl<'a> DoublePendulum<'a> {
         V4::new_from(acceleration[0], acceleration[1], omega1, omega2)
     }
 
-    fn runge_kutta(&self, y: V4<f32>, dt: f32) -> V4<f32> {
-        let k1 = self.system(y);
-        let k2 = self.system(y + 0.5 * k1 * dt);
-        let k3 = self.system(y + 0.5 * k2 * dt);
-        let k4 = self.system(y + k3 * dt);
+    fn runge_kutta(&self, states: V4<f32>, dt: f32) -> V4<f32> {
+        let k1 = self.system(states);
+        let k2 = self.system(states + 0.5 * k1 * dt);
+        let k3 = self.system(states + 0.5 * k2 * dt);
+        let k4 = self.system(states + k3 * dt);
 
         // return dt * G(y)
         dt * (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
@@ -131,8 +131,8 @@ impl<'a> DoublePendulum<'a> {
         let scale = 50.0;
         let l1 = self.link1.length;
         let l2 = self.link2.length;
-        let theta1 = self.y[3];
-        let theta2 = self.y[2];
+        let theta1 = self.states[2];
+        let theta2 = self.states[3];
         let x1 = l1 * scale * theta1.sin() + origin_x;
         let y1 = l1 * scale * theta1.cos() + origin_y;
         let x2 = x1 + l2 * scale * theta2.sin();
@@ -147,7 +147,7 @@ impl<'a> DoublePendulum<'a> {
         let r2 = self.link2.mass.radius;
 
         // integration
-        self.y += self.runge_kutta(self.y, dt);
+        self.states += self.runge_kutta(self.states, dt);
         let (pos1, pos2) = self.get_position();
 
         self.link1.mass.shape.set_position(pos1 - Vector2f::new(r1, r1));
