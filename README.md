@@ -20,7 +20,7 @@ https://www.rust-lang.org/
 cargo run --release
 ```
 
-![](Images/double-pendulum.gif)
+![](Images/pendulum3.gif)
 
 
 ## TODO

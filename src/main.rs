@@ -143,8 +143,6 @@ impl<'a> DoublePendulum<'a> {
     fn update_position(&mut self, dt: f32) {
 
         let r1 = self.link1.mass.radius;
-        let r2 = self.link2.mass.radius;
-
         // integration
         self.states += self.runge_kutta(self.states, dt);
         let (pos1, pos2) = self.get_position();
@@ -156,9 +154,9 @@ impl<'a> DoublePendulum<'a> {
         self.link2.shape[1].position = pos2;
 
         // path drawing
-        let mut circle = CircleShape::new(1., 30);
+        let mut circle = CircleShape::new(1.5, 40);
         circle.set_position(pos2);
-        if self.path.len() > 300 {
+        if self.path.len() > 500 {
             self.path.clear();
         }
         self.path.push(circle);
@@ -240,7 +238,12 @@ fn main() {
         window.draw(&double_pendulum.link2.shape);
         window.draw(&double_pendulum.link1.mass.shape);
         window.draw(&double_pendulum.link2.mass.shape);
-        for c in &double_pendulum.path {
+        for c in &mut double_pendulum.path {
+            let mut color = c.fill_color();
+            if color.a > 1 {
+                color.a -= 1;
+            }
+            c.set_fill_color(color);
             window.draw(c);
         }
         window.display();
