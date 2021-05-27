@@ -55,7 +55,6 @@ const G: f32 = 9.81;
 struct Link<'a> {
     length: f32,
     states: [f32; 2],
-    // extremes_positions: (Vector2f, Vector2f),
     shape: VertexArray,
     color: Color,
     mass: Mass<'a>
@@ -72,7 +71,6 @@ impl<'a> Link<'a> {
         Self {
             length,
             states: [theta_0, omega_0],
-            // extremes_positions,
             shape,
             color,
             mass
@@ -177,7 +175,6 @@ struct Mass<'a> {
 impl<'a> Mass<'a> {
     fn new(mass: f32, radius: f32, color: Color) -> Self {
         let mut shape = CircleShape::new(radius, 100);
-        // shape.set_position(position);
         shape.set_outline_thickness(3.0);
         shape.set_fill_color(color);
         shape.set_outline_color(Color::BLACK);
@@ -202,7 +199,7 @@ fn main() {
     let m1 = 1.0;
     let l1 = 2.0;
 
-    let link1_states_0 = [90f32.to_radians(), 0.0];
+    let link1_states_0 = [90f32.to_radians(), 2.0];
     let mass1 = Mass::new(m1, 10.0, Color::GREEN);
     let link1 = Link::new(l1, Color::RED, mass1, link1_states_0);
 
