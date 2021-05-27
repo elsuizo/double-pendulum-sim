@@ -31,6 +31,7 @@
 // - [X] plot the pos2 trayectory
 // - [ ] plot the acceleration and velocities
 // - [ ] live change parameters when the simulation pause
+//      - [ ] the radius of the masses should change proportionally
 // - [ ] text rendering like energy value and velocities values
 // - [ ] save the configuration in a file to later use like a .json, yaml or csv or toml or ...
 //-------------------------------------------------------------------------
@@ -47,12 +48,14 @@ use static_math::traits::LinearAlgebra;
 
 const WINDOW_WIDTH:  f32 = 500.0;
 const WINDOW_HEIGHT: f32 = 500.0;
+const ORIGIN_X: f32 = WINDOW_WIDTH / 2.0;
+const ORIGIN_Y: f32 = WINDOW_HEIGHT / 3.0;
 const G: f32 = 9.81;
 
 struct Link<'a> {
     length: f32,
     states: [f32; 2],
-    extremes_positions: (Vector2f, Vector2f),
+    // extremes_positions: (Vector2f, Vector2f),
     shape: VertexArray,
     color: Color,
     mass: Mass<'a>
@@ -60,16 +63,16 @@ struct Link<'a> {
 
 impl<'a> Link<'a> {
     /// Create a new link
-    fn new(extremes_positions: (Vector2f, Vector2f), length: f32, color: Color, mass: Mass<'a>, [theta_0, omega_0]: [f32; 2]) -> Self {
+    fn new(length: f32, color: Color, mass: Mass<'a>, [theta_0, omega_0]: [f32; 2]) -> Self {
         // this create the lines
         let mut shape = VertexArray::default();
         shape.set_primitive_type(PrimitiveType::LineStrip);
-        shape.append(&Vertex::with_pos_color(extremes_positions.0, color));
-        shape.append(&Vertex::with_pos_color(extremes_positions.1, color));
+        shape.append(&Vertex::with_pos_color(Vector2f::new(ORIGIN_X, ORIGIN_Y), color));
+        shape.append(&Vertex::with_pos_color(Vector2f::new(0.0, 0.0), color));
         Self {
             length,
             states: [theta_0, omega_0],
-            extremes_positions,
+            // extremes_positions,
             shape,
             color,
             mass
@@ -126,15 +129,13 @@ impl<'a> DoublePendulum<'a> {
     }
 
     fn get_position(&self) -> (Vector2f, Vector2f) {
-        let origin_x = WINDOW_WIDTH / 2.0;
-        let origin_y = WINDOW_HEIGHT / 3.0;
         let scale = 50.0;
         let l1 = self.link1.length;
         let l2 = self.link2.length;
         let theta1 = self.states[2];
         let theta2 = self.states[3];
-        let x1 = l1 * scale * theta1.sin() + origin_x;
-        let y1 = l1 * scale * theta1.cos() + origin_y;
+        let x1 = l1 * scale * theta1.sin() + ORIGIN_X;
+        let y1 = l1 * scale * theta1.cos() + ORIGIN_Y;
         let x2 = x1 + l2 * scale * theta2.sin();
         let y2 = y1 + l2 * scale * theta2.cos();
 
@@ -169,27 +170,24 @@ impl<'a> DoublePendulum<'a> {
 struct Mass<'a> {
     mass: f32,
     radius: f32,
-    position: Vector2f,
     shape: CircleShape<'a>,
     color: Color
 }
 
 impl<'a> Mass<'a> {
-    fn new(mass: f32, radius: f32, position: Vector2f, color: Color) -> Self {
+    fn new(mass: f32, radius: f32, color: Color) -> Self {
         let mut shape = CircleShape::new(radius, 100);
-        shape.set_position(position);
+        // shape.set_position(position);
         shape.set_outline_thickness(3.0);
         shape.set_fill_color(color);
         shape.set_outline_color(Color::BLACK);
 
-        Self{mass, radius, position, shape, color}
+        Self{mass, radius, shape, color}
     }
 }
 
 fn main() {
 
-    let origin_x = WINDOW_WIDTH / 2.0;
-    let origin_y = WINDOW_HEIGHT / 3.0;
     // Create the window of the application
     let mut window = RenderWindow::new(
         (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
@@ -201,23 +199,19 @@ fn main() {
     window.set_vertical_sync_enabled(true);
     let background_color = Color::BLACK;
 
-    let origin = Vector2f::new(origin_x, origin_y);
-    let pos1   = Vector2f::new(origin_x, origin_y + 100.0);
-    let pos2   = Vector2f::new(origin_x, origin_y + 200.0);
-
     let m1 = 1.0;
-    let l1 = 1.5;
+    let l1 = 2.0;
 
     let link1_states_0 = [90f32.to_radians(), 0.0];
-    let mass1 = Mass::new(m1, 10.0, pos1 - Vector2f::new(10.0, 10.0), Color::GREEN);
-    let link1 = Link::new((origin, pos1), l1, Color::RED, mass1, link1_states_0);
+    let mass1 = Mass::new(m1, 10.0, Color::GREEN);
+    let link1 = Link::new(l1, Color::RED, mass1, link1_states_0);
 
     let m2 = 3.0;
     let l2 = 2.0;
 
     let link2_states_0 = [130f32.to_radians(), 0.0];
-    let mass2 = Mass::new(m2, 10.0, pos2 - Vector2f::new(10.0, 10.0), Color::RED);
-    let link2 = Link::new((pos1, pos2), l2, Color::BLUE, mass2, link2_states_0);
+    let mass2 = Mass::new(m2, 10.0, Color::RED);
+    let link2 = Link::new(l2, Color::BLUE, mass2, link2_states_0);
 
     let mut double_pendulum = DoublePendulum::new(Box::new(link1), Box::new(link2));
 
