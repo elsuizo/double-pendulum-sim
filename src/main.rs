@@ -41,7 +41,7 @@ use sfml::graphics::{CircleShape, Color, RenderTarget,
                      RenderWindow, Shape, Transformable, Vertex, VertexArray, PrimitiveType};
 
 use sfml::system::{Clock, Vector2f};
-use sfml::window::{VideoMode, ContextSettings, Event, Key, Style};
+use sfml::window::{Event, Key, Style};
 
 use static_math::{M22, m22_new, V4, V2};
 use static_math::traits::LinearAlgebra;
@@ -243,6 +243,9 @@ fn main() {
             if color.a > 4 {
                 color.a -= 4;
             }
+            color.r = 100;
+            color.g = 10;
+            color.b = 100;
             c.set_fill_color(color);
             window.draw(c);
         }
