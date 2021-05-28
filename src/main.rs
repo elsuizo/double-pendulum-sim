@@ -156,7 +156,7 @@ impl<'a> DoublePendulum<'a> {
         // path drawing
         let mut circle = CircleShape::new(1.5, 40);
         circle.set_position(pos2);
-        if self.path.len() > 500 {
+        if self.path.len() > 200 {
             self.path.clear();
         }
         self.path.push(circle);
@@ -240,8 +240,8 @@ fn main() {
         window.draw(&double_pendulum.link2.mass.shape);
         for c in &mut double_pendulum.path {
             let mut color = c.fill_color();
-            if color.a > 1 {
-                color.a -= 1;
+            if color.a > 4 {
+                color.a -= 4;
             }
             c.set_fill_color(color);
             window.draw(c);
