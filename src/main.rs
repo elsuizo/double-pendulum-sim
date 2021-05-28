@@ -45,12 +45,14 @@ use sfml::window::{Event, Key, Style};
 
 use static_math::{M22, m22_new, V4, V2};
 use static_math::traits::LinearAlgebra;
+use rand::{Rng};
 
 const WINDOW_WIDTH:  f32 = 500.0;
 const WINDOW_HEIGHT: f32 = 500.0;
 const ORIGIN_X: f32 = WINDOW_WIDTH / 2.0;
 const ORIGIN_Y: f32 = WINDOW_HEIGHT / 3.0;
 const G: f32 = 9.81;
+const NUM_PENDULUMS: usize = 10;
 
 struct Link<'a> {
     length: f32,
@@ -181,6 +183,22 @@ impl<'a> Mass<'a> {
     }
 }
 
+fn pick_random_color() -> Color {
+    let mut rng = rand::thread_rng();
+    match rng.gen_range(0..5) {
+        0 => Color::RED,
+        1 => Color::GREEN,
+        2 => Color::WHITE,
+        3 => Color::BLUE,
+        _ => get_random_color()
+    }
+}
+
+fn get_random_color() -> Color {
+    let mut rng = rand::thread_rng();
+    Color::rgb(rng.gen_range(0..255), rng.gen_range(0..255), rng.gen_range(0..255))
+}
+
 fn main() {
 
     // Create the window of the application
@@ -196,19 +214,24 @@ fn main() {
 
     let m1 = 1.0;
     let l1 = 2.0;
-
-    let link1_states_0 = [90f32.to_radians(), 2.0];
-    let mass1 = Mass::new(m1, 10.0, Color::GREEN);
-    let link1 = Link::new(l1, Color::RED, mass1, link1_states_0);
-
     let m2 = 3.0;
     let l2 = 2.0;
 
-    let link2_states_0 = [130f32.to_radians(), 0.0];
-    let mass2 = Mass::new(m2, 10.0, Color::RED);
-    let link2 = Link::new(l2, Color::BLUE, mass2, link2_states_0);
 
-    let mut double_pendulum = DoublePendulum::new(Box::new(link1), Box::new(link2));
+    let mut pendulums: Vec<DoublePendulum> = Vec::new();
+
+    for _ in 0..NUM_PENDULUMS {
+        let mass2 = Mass::new(m2, 3.0, pick_random_color());
+        let mass1 = Mass::new(m1, 3.0, pick_random_color());
+        let mut rng = rand::thread_rng();
+        let theta1_0 = (rng.gen_range(0..360) as f32).to_radians();
+        let theta2_0 = (rng.gen_range(0..360) as f32).to_radians();
+        let link1_states_0 = [theta1_0, 2.0];
+        let link2_states_0 = [theta2_0, 0.0];
+        let link1 = Link::new(l1, pick_random_color(), mass1, link1_states_0);
+        let link2 = Link::new(l2, pick_random_color(), mass2, link2_states_0);
+        pendulums.push(DoublePendulum::new(Box::new(link1), Box::new(link2)));
+    }
 
     let mut is_running = true;
 
@@ -232,22 +255,24 @@ fn main() {
         clock.restart();
         window.clear(background_color);
 
-        double_pendulum.update_position(dt);
+        for double_pendulum in pendulums.iter_mut() {
+            double_pendulum.update_position(dt);
 
-        window.draw(&double_pendulum.link1.shape);
-        window.draw(&double_pendulum.link2.shape);
-        window.draw(&double_pendulum.link1.mass.shape);
-        window.draw(&double_pendulum.link2.mass.shape);
-        for c in &mut double_pendulum.path {
-            let mut color = c.fill_color();
-            if color.a > 4 {
-                color.a -= 4;
+            window.draw(&double_pendulum.link1.shape);
+            window.draw(&double_pendulum.link2.shape);
+            window.draw(&double_pendulum.link1.mass.shape);
+            window.draw(&double_pendulum.link2.mass.shape);
+            for c in &mut double_pendulum.path {
+                let mut color = c.fill_color();
+                if color.a > 4 {
+                    color.a -= 4;
+                }
+                color.r = 100;
+                color.g = 10;
+                color.b = 100;
+                c.set_fill_color(color);
+                window.draw(c);
             }
-            color.r = 100;
-            color.g = 10;
-            color.b = 100;
-            c.set_fill_color(color);
-            window.draw(c);
         }
         window.display();
     }
