@@ -124,7 +124,7 @@ impl<'a> DoublePendulum<'a> {
         let k3 = self.system(states + 0.5 * k2 * dt);
         let k4 = self.system(states + k3 * dt);
 
-        // return dt * G(y)
+        // return dt * integral(system(y))
         dt * (k1 + 2.0 * k2 + 2.0 * k3 + k4) / 6.0
     }
 
@@ -183,17 +183,6 @@ impl<'a> Mass<'a> {
     }
 }
 
-fn pick_random_color() -> Color {
-    let mut rng = rand::thread_rng();
-    match rng.gen_range(0..5) {
-        0 => Color::RED,
-        1 => Color::GREEN,
-        2 => Color::WHITE,
-        3 => Color::BLUE,
-        _ => get_random_color()
-    }
-}
-
 fn get_random_color() -> Color {
     let mut rng = rand::thread_rng();
     Color::rgb(rng.gen_range(0..255), rng.gen_range(0..255), rng.gen_range(0..255))
@@ -216,20 +205,18 @@ fn main() {
     let l1 = 2.0;
     let m2 = 3.0;
     let l2 = 2.0;
-
-
     let mut pendulums: Vec<DoublePendulum> = Vec::new();
 
-    for _ in 0..NUM_PENDULUMS {
-        let mass2 = Mass::new(m2, 3.0, pick_random_color());
-        let mass1 = Mass::new(m1, 3.0, pick_random_color());
+    for i in 0..NUM_PENDULUMS {
+        let mass2 = Mass::new(m2, 5.0, get_random_color());
+        let mass1 = Mass::new(m1, 5.0, get_random_color());
         let mut rng = rand::thread_rng();
-        let theta1_0 = (rng.gen_range(0..360) as f32).to_radians();
-        let theta2_0 = (rng.gen_range(0..360) as f32).to_radians();
+        let theta1_0 = (10.0 * i as f32 + 1.0).to_radians();
+        let theta2_0 = (2.0 * i as f32 + 1.0).to_radians();
         let link1_states_0 = [theta1_0, 2.0];
         let link2_states_0 = [theta2_0, 0.0];
-        let link1 = Link::new(l1, pick_random_color(), mass1, link1_states_0);
-        let link2 = Link::new(l2, pick_random_color(), mass2, link2_states_0);
+        let link1 = Link::new(l1, get_random_color(), mass1, link1_states_0);
+        let link2 = Link::new(l2, get_random_color(), mass2, link2_states_0);
         pendulums.push(DoublePendulum::new(Box::new(link1), Box::new(link2)));
     }
 
