@@ -52,7 +52,7 @@ const WINDOW_HEIGHT: f32 = 500.0;
 const ORIGIN_X: f32 = WINDOW_WIDTH / 2.0;
 const ORIGIN_Y: f32 = WINDOW_HEIGHT / 3.0;
 const G: f32 = 9.81;
-const NUM_PENDULUMS: usize = 10;
+const NUM_PENDULUMS: usize = 5;
 
 struct Link<'a> {
     length: f32,
@@ -211,8 +211,8 @@ fn main() {
         let mass2 = Mass::new(m2, 5.0, get_random_color());
         let mass1 = Mass::new(m1, 5.0, get_random_color());
         let mut rng = rand::thread_rng();
-        let theta1_0 = (10.0 * i as f32 + 1.0).to_radians();
-        let theta2_0 = (2.0 * i as f32 + 1.0).to_radians();
+        let theta1_0 = (90.0 + i as f32 / 1000.0).to_radians();
+        let theta2_0 = (130.0 + i as f32 / 1000.0).to_radians();
         let link1_states_0 = [theta1_0, 2.0];
         let link2_states_0 = [theta2_0, 0.0];
         let link1 = Link::new(l1, get_random_color(), mass1, link1_states_0);
