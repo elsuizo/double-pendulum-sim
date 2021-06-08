@@ -26,7 +26,7 @@
 // TODO(elsuizo:2020-07-14): list of:
 // - [X] implement Runge-kutta
 // - [ ] implement game loop to pause and change parameters
-//      - [ ] pause the simulation
+//      - [X] pause the simulation
 //      - [ ] when pause pos2 should follow the mouse pointer
 // - [X] plot the pos2 trayectory
 // - [ ] plot the acceleration and velocities
@@ -38,7 +38,7 @@
 //                        crates imports
 //-------------------------------------------------------------------------
 use sfml::graphics::{CircleShape, Color, RenderTarget,
-                     RenderWindow, Shape, Transformable, Vertex, VertexArray, PrimitiveType};
+                     RenderWindow, Shape, Transformable, Vertex, VertexArray, PrimitiveType, Font, Text};
 
 use sfml::system::{Clock, Vector2f};
 use sfml::window::{Event, Key, Style};
@@ -191,6 +191,10 @@ fn main() {
         &Default::default(),
     );
 
+    let font = Font::from_file("resources/sansation.ttf").unwrap();
+    let mut simulation_running_text = Text::new("simulation running", &font, 16);
+    let mut simulation_paussed_text = Text::new("simulation paused", &font, 16);
+
     window.set_vertical_sync_enabled(true);
     let background_color = Color::BLACK;
 
@@ -232,6 +236,7 @@ fn main() {
         }
 
         if is_running {
+            window.draw(&simulation_running_text);
             let deltatime = clock.elapsed_time();
             let dt = deltatime.as_seconds();
             clock.restart();
@@ -254,6 +259,8 @@ fn main() {
                 c.set_fill_color(color);
                 window.draw(c);
             }
+        } else {
+            window.draw(&simulation_paussed_text);
         }
         window.display();
     }
