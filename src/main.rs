@@ -218,36 +218,42 @@ fn main() {
         while let Some(event) = window.poll_event() {
             match event {
                 Event::Closed | Event::KeyPressed {code: Key::Escape, ..} => return,
-                Event::KeyPressed {code: Key::Space, ..} if !is_running => {
-                    is_running = true;
-                    //clock.restart();
-                    println!("space!!!");
+                Event::KeyPressed {code: Key::Space, ..} => {
+                    if is_running {
+                        clock.restart();
+                        is_running = false;
+                    } else {
+                        clock.restart();
+                        is_running = true;
+                    }
                 }
                 _ => {}
             }
         }
 
-        let deltatime = clock.elapsed_time();
-        let dt = deltatime.as_seconds();
-        clock.restart();
-        window.clear(background_color);
+        if is_running {
+            let deltatime = clock.elapsed_time();
+            let dt = deltatime.as_seconds();
+            clock.restart();
+            window.clear(background_color);
 
-        double_pendulum.update_position(dt);
+            double_pendulum.update_position(dt);
 
-        window.draw(&double_pendulum.link1.shape);
-        window.draw(&double_pendulum.link2.shape);
-        window.draw(&double_pendulum.link1.mass.shape);
-        window.draw(&double_pendulum.link2.mass.shape);
-        for c in &mut double_pendulum.path {
-            let mut color = c.fill_color();
-            if color.a > 4 {
-                color.a -= 4;
+            window.draw(&double_pendulum.link1.shape);
+            window.draw(&double_pendulum.link2.shape);
+            window.draw(&double_pendulum.link1.mass.shape);
+            window.draw(&double_pendulum.link2.mass.shape);
+            for c in &mut double_pendulum.path {
+                let mut color = c.fill_color();
+                if color.a > 4 {
+                    color.a -= 4;
+                }
+                color.r = 100;
+                color.g = 10;
+                color.b = 100;
+                c.set_fill_color(color);
+                window.draw(c);
             }
-            color.r = 100;
-            color.g = 10;
-            color.b = 100;
-            c.set_fill_color(color);
-            window.draw(c);
         }
         window.display();
     }
