@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 sfml = "*"
-static-math = "0.1.9"
+static-math = "0.2.3"
