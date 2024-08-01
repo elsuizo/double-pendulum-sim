@@ -37,16 +37,18 @@
 //-------------------------------------------------------------------------
 //                        crates imports
 //-------------------------------------------------------------------------
-use sfml::graphics::{CircleShape, Color, RenderTarget,
-                     RenderWindow, Shape, Transformable, Vertex, VertexArray, PrimitiveType, Font, Text};
+use sfml::graphics::{
+    CircleShape, Color, Font, PrimitiveType, RenderStates, RenderTarget, RenderWindow, Shape, Text,
+    Transformable, Vertex,
+};
 
 use sfml::system::{Clock, Vector2f};
 use sfml::window::{Event, Key, Style};
 
-use static_math::{M22, m22_new, V4, V2};
 use static_math::traits::LinearAlgebra;
+use static_math::{m22_new, M22, V2, V4};
 
-const WINDOW_WIDTH:  f32 = 500.0;
+const WINDOW_WIDTH: f32 = 500.0;
 const WINDOW_HEIGHT: f32 = 500.0;
 const ORIGIN_X: f32 = WINDOW_WIDTH / 2.0;
 const ORIGIN_Y: f32 = WINDOW_HEIGHT / 3.0;
@@ -55,25 +57,23 @@ const G: f32 = 9.81;
 struct Link<'a> {
     length: f32,
     states: [f32; 2],
-    shape: VertexArray,
-    color: Color,
-    mass: Mass<'a>
+    shape: [Vertex; 2],
+    mass: Mass<'a>,
 }
 
 impl<'a> Link<'a> {
     /// Create a new link
     fn new(length: f32, color: Color, mass: Mass<'a>, [theta_0, omega_0]: [f32; 2]) -> Self {
         // this create the lines
-        let mut shape = VertexArray::default();
-        shape.set_primitive_type(PrimitiveType::LineStrip);
-        shape.append(&Vertex::with_pos_color(Vector2f::new(ORIGIN_X, ORIGIN_Y), color));
-        shape.append(&Vertex::with_pos_color(Vector2f::new(0.0, 0.0), color));
+        let mut shape = [Vertex::default(); 2];
+        // shape.set_primitive_type(PrimitiveType::LineStrip);
+        shape[0] = Vertex::with_pos_color(Vector2f::new(ORIGIN_X, ORIGIN_Y), color);
+        shape[1] = Vertex::with_pos_color(Vector2f::new(0.0, 0.0), color);
         Self {
             length,
             states: [theta_0, omega_0],
             shape,
-            color,
-            mass
+            mass,
         }
     }
 }
@@ -82,11 +82,10 @@ struct DoublePendulum<'a> {
     link1: Box<Link<'a>>,
     link2: Box<Link<'a>>,
     path: Vec<CircleShape<'a>>,
-    states: V4<f32>
+    states: V4<f32>,
 }
 
 impl<'a> DoublePendulum<'a> {
-
     fn new(link1: Box<Link<'a>>, link2: Box<Link<'a>>) -> Self {
         let path: Vec<CircleShape> = Vec::new();
         let theta1_0 = link1.states[0];
@@ -95,7 +94,12 @@ impl<'a> DoublePendulum<'a> {
         let omega2_0 = link2.states[1];
         // initial conditions to the system
         let states = V4::new_from(omega1_0, omega2_0, theta1_0, theta2_0);
-        Self{link1, link2, path, states}
+        Self {
+            link1,
+            link2,
+            path,
+            states,
+        }
     }
 
     // NOTE(elsuizo:2021-05-25): wide code is better code :)
@@ -109,8 +113,10 @@ impl<'a> DoublePendulum<'a> {
         let m = m22_new!(         (m1 + m2) * l1     , m2 * l2 * (theta1 - theta2).cos();
                          l1 * (theta1 - theta2).cos(),          l2                      );
 
-        let f = V2::new_from(-m2 * l2 * omega2 * omega2 * (theta1 - theta2).sin() - (m1 + m2) * G * theta1.sin(),
-                             l1 * omega1 * omega1 * (theta1 - theta2).sin() - G * theta2.sin());
+        let f = V2::new_from(
+            -m2 * l2 * omega2 * omega2 * (theta1 - theta2).sin() - (m1 + m2) * G * theta1.sin(),
+            l1 * omega1 * omega1 * (theta1 - theta2).sin() - G * theta2.sin(),
+        );
 
         let acceleration = m.inverse().expect("no inverse!!!") * f;
         V4::new_from(acceleration[0], acceleration[1], omega1, omega2)
@@ -141,14 +147,19 @@ impl<'a> DoublePendulum<'a> {
     }
 
     fn update_position(&mut self, dt: f32) {
-
         let r1 = self.link1.mass.radius;
         // integration
         self.states += self.runge_kutta(self.states, dt);
         let (pos1, pos2) = self.get_position();
 
-        self.link1.mass.shape.set_position(pos1 - Vector2f::new(r1, r1));
-        self.link2.mass.shape.set_position(pos2 - Vector2f::new(r1, r1));
+        self.link1
+            .mass
+            .shape
+            .set_position(pos1 - Vector2f::new(r1, r1));
+        self.link2
+            .mass
+            .shape
+            .set_position(pos2 - Vector2f::new(r1, r1));
         self.link1.shape[1].position = pos1;
         self.link2.shape[0].position = pos1;
         self.link2.shape[1].position = pos2;
@@ -167,7 +178,6 @@ struct Mass<'a> {
     mass: f32,
     radius: f32,
     shape: CircleShape<'a>,
-    color: Color
 }
 
 impl<'a> Mass<'a> {
@@ -177,12 +187,15 @@ impl<'a> Mass<'a> {
         shape.set_fill_color(color);
         shape.set_outline_color(Color::BLACK);
 
-        Self{mass, radius, shape, color}
+        Self {
+            mass,
+            radius,
+            shape,
+        }
     }
 }
 
 fn main() {
-
     // Create the window of the application
     let mut window = RenderWindow::new(
         (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
@@ -192,8 +205,8 @@ fn main() {
     );
 
     let font = Font::from_file("resources/sansation.ttf").unwrap();
-    let mut simulation_running_text = Text::new("simulation running", &font, 16);
-    let mut simulation_paussed_text = Text::new("simulation paused", &font, 16);
+    let simulation_running_text = Text::new("simulation running", &font, 16);
+    let simulation_paussed_text = Text::new("simulation paused", &font, 16);
 
     window.set_vertical_sync_enabled(true);
     let background_color = Color::BLACK;
@@ -221,8 +234,13 @@ fn main() {
     loop {
         while let Some(event) = window.poll_event() {
             match event {
-                Event::Closed | Event::KeyPressed {code: Key::Escape, ..} => return,
-                Event::KeyPressed {code: Key::Space, ..} => {
+                Event::Closed
+                | Event::KeyPressed {
+                    code: Key::Escape, ..
+                } => return,
+                Event::KeyPressed {
+                    code: Key::Space, ..
+                } => {
                     if is_running {
                         clock.restart();
                         is_running = false;
@@ -236,6 +254,7 @@ fn main() {
         }
 
         if is_running {
+            let rs = RenderStates::default();
             window.draw(&simulation_running_text);
             let deltatime = clock.elapsed_time();
             let dt = deltatime.as_seconds();
@@ -244,8 +263,8 @@ fn main() {
 
             double_pendulum.update_position(dt);
 
-            window.draw(&double_pendulum.link1.shape);
-            window.draw(&double_pendulum.link2.shape);
+            window.draw_primitives(&double_pendulum.link1.shape, PrimitiveType::LINE_STRIP, &rs);
+            window.draw_primitives(&double_pendulum.link2.shape, PrimitiveType::LINE_STRIP, &rs);
             window.draw(&double_pendulum.link1.mass.shape);
             window.draw(&double_pendulum.link2.mass.shape);
             for c in &mut double_pendulum.path {
