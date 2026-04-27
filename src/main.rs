@@ -44,6 +44,7 @@ use sfml::graphics::{
 
 use sfml::system::{Clock, Vector2f};
 use sfml::window::{Event, Key, Style};
+use sfml::SfResult;
 
 use static_math::traits::LinearAlgebra;
 use static_math::{m22_new, M22, V2, V4};
@@ -195,14 +196,14 @@ impl<'a> Mass<'a> {
     }
 }
 
-fn main() {
+fn main() -> SfResult<()> {
     // Create the window of the application
     let mut window = RenderWindow::new(
         (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
         "Double pendulum simulation",
         Style::CLOSE,
         &Default::default(),
-    );
+    )?;
 
     let font = Font::from_file("resources/sansation.ttf").unwrap();
     let simulation_running_text = Text::new("simulation running", &font, 16);
@@ -229,7 +230,7 @@ fn main() {
 
     let mut is_running = true;
 
-    let mut clock = Clock::start();
+    let mut clock = Clock::start()?;
 
     loop {
         while let Some(event) = window.poll_event() {
@@ -237,7 +238,7 @@ fn main() {
                 Event::Closed
                 | Event::KeyPressed {
                     code: Key::Escape, ..
-                } => return,
+                } => return Ok(()),
                 Event::KeyPressed {
                     code: Key::Space, ..
                 } => {
