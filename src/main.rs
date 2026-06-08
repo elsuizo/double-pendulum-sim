@@ -256,7 +256,6 @@ fn main() -> SfResult<()> {
 
         if is_running {
             let rs = RenderStates::default();
-            window.draw(&simulation_running_text);
             let deltatime = clock.elapsed_time();
             let dt = deltatime.as_seconds();
             clock.restart();
@@ -268,6 +267,7 @@ fn main() -> SfResult<()> {
             window.draw_primitives(&double_pendulum.link2.shape, PrimitiveType::LINE_STRIP, &rs);
             window.draw(&double_pendulum.link1.mass.shape);
             window.draw(&double_pendulum.link2.mass.shape);
+            window.draw(&simulation_running_text);
             for c in &mut double_pendulum.path {
                 let mut color = c.fill_color();
                 if color.a > 4 {
@@ -280,6 +280,7 @@ fn main() -> SfResult<()> {
                 window.draw(c);
             }
         } else {
+            window.clear(background_color);
             window.draw(&simulation_paussed_text);
         }
         window.display();
